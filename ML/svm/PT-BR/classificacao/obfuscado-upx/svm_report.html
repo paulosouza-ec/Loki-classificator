@@ -1,0 +1,365 @@
+
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard SVM - Relatório de Resultados</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, Arial; background: linear-gradient(135deg, #8B1538 0%, #A91E4A 50%, #6B1429 100%); min-height: 100vh; color: #333; }
+            .dashboard-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+            .header { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; margin-bottom: 30px; text-align: center; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }
+            .header h1 { font-size: 2.5em; background: linear-gradient(45deg, #8B1538, #A91E4A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px; }
+            .subtitle { font-size: 1.2em; color: #666; font-weight: 300; }
+            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+            .stat-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 15px; padding: 25px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+            .stat-card:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); }
+            .stat-card.best { border-left: 10px solid #A5D7A7; } .stat-card.worst { border-left: 10px solid #f9a19a; }
+            .card-header { display: flex; align-items: center; margin-bottom: 20px; }
+            .card-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 1.5em; font-weight: bold; color: white; }
+            .card-icon.best { background: linear-gradient(45deg, #4CAF50, #66BB6A); }
+            .card-icon.worst { background: linear-gradient(45deg, #f44336, #EF5350); }
+            .card-title { font-size: 1.3em; font-weight: 600; }
+            .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }
+            .metric-row:last-child { border-bottom: none; }
+            .metric-label { font-weight: 500; color: #555; }
+            .metric-value { font-weight: 600; padding: 4px 12px; border-radius: 20px; }
+            .metric-value.best { background: rgba(76, 175, 80, 0.1); }
+            .metric-value.worst { background: rgba(244, 67, 54, 0.1); }
+            .cm-container { text-align: center; margin-top: 20px; }
+            .cm-image { max-width: 70%; height: auto; border-radius: 5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }
+            .kernels-section { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }
+            .section-title { font-size: 2em; margin-bottom: 20px; font-weight: 600; background: linear-gradient(45deg, #8B1538, #A91E4A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+            .kernel-group { margin-bottom: 40px; }
+            .kernel-title { font-size: 1.5em; font-weight: 600; margin-bottom: 20px; padding: 15px 20px; color: white; border-radius: 10px; text-align: center; background: linear-gradient(45deg, #8B1538, #A91E4A); }
+            .kernel-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; }
+            .result-card { background: rgba(255, 255, 255, 0.9); border-radius: 15px; padding: 25px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); transition: transform 0.3s ease; }
+            .result-card:hover { transform: translateY(-3px); }
+            .result-card.best { border: 2px solid #4CAF50; } .result-card.worst { border: 2px solid #f44336; }
+            .result-header { display: flex; align-items: center; margin-bottom: 20px; }
+            .result-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; color: white; font-weight: bold; }
+            .logo-ufpe { height: 150px; width: auto; }
+            .result-icon.best { background: #4CAF50; } .result-icon.worst { background: #f44336; }
+            .result-title { font-size: 1.2em; font-weight: 600; }
+            .metrics-list { list-style: none; margin-bottom: 20px; }
+            .metrics-list li { padding: 8px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.05); display: flex; justify-content: space-between; align-items: center; }
+            .metrics-list li:last-child { border-bottom: none; }
+            .metric-name { font-weight: 500; color: #555; }
+            .metric-val { font-weight: 600; }
+            @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+            .stat-card, .kernels-section { animation: fadeInUp 0.6s ease forwards; }
+        </style>
+    </head>
+    <body>
+        <div class="dashboard-container">
+            <div class="header">
+                <img src="../../src/ufpe_logo.png" alt="University Logo" class="logo-ufpe">
+                <h1>SVM - Avaliação de Parâmetros</h1>
+                <p class="subtitle">Acurácia de Teste é a métrica principal para os resultados</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card best">
+                    <div class="card-header"><div class="card-icon best">🏆</div><div class="card-title">Melhor Performance Global</div></div>
+                    <div class="metric-row"><span class="metric-label">Config (C, γ)</span><span class="metric-value best">C=1000, γ=1</span></div>
+                    <div class="metric-row"><span class="metric-label">Melhor Kernel</span><span class="metric-value best">Radial Basis Function</span></div>
+                    <div class="metric-row"><span class="metric-label">Acc Treino</span><span class="metric-value best">95.88%</span></div>
+                    <div class="metric-row"><span class="metric-label">Acc Teste</span><span class="metric-value best">94.17%</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value best">0.1234s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value best">0.0353s</span></div>
+                    <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_global_best.png" alt="CM Best Global"></div>
+                </div>
+
+                <div class="stat-card worst">
+                    <div class="card-header"><div class="card-icon worst">💎</div><div class="card-title">Pior Performance Global</div></div>
+                    <div class="metric-row"><span class="metric-label">Config (C, γ)</span><span class="metric-value worst">C=1, γ=1</span></div>
+                    <div class="metric-row"><span class="metric-label">Pior Kernel</span><span class="metric-value worst">Sigmoide</span></div>
+                    <div class="metric-row"><span class="metric-label">Acc Treino</span><span class="metric-value worst">65.25%</span></div>
+                    <div class="metric-row"><span class="metric-label">Acc Teste</span><span class="metric-value worst">65.56%</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value worst">0.2892s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value worst">0.0529s</span></div>
+                    <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_global_worst.png" alt="CM Worst Global"></div>
+                </div>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">Resumo por Kernel</h2>
+                
+                <div class="kernel-group">
+                    <div class="kernel-title">Kernel: Linear</div>
+                    <div class="kernel-results">
+                        
+                        <div class="result-card best">
+                            <div class="result-header"><div class="result-icon best">👍</div><div class="result-title">Melhor Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=0</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">92.96% &plusmn; 0.25%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">90.48% &plusmn; 0.59%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">1.3273s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0194s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Linear_best.png" alt="CM Best"></div>
+                        </div>
+                        
+
+                        
+                        <div class="result-card worst">
+                            <div class="result-header"><div class="result-icon worst">💎</div><div class="result-title">Pior Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=0</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">92.67% &plusmn; 0.17%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">90.02% &plusmn; 0.73%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.0983s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0156s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Linear_worst.png" alt="CM Worst"></div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div class="kernel-group">
+                    <div class="kernel-title">Kernel: Polinomial</div>
+                    <div class="kernel-results">
+                        
+                        <div class="result-card best">
+                            <div class="result-header"><div class="result-icon best">👍</div><div class="result-title">Melhor Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">95.88% &plusmn; 0.07%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">92.68% &plusmn; 0.60%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.0733s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0120s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Polinomial_best.png" alt="CM Best"></div>
+                        </div>
+                        
+
+                        
+                        <div class="result-card worst">
+                            <div class="result-header"><div class="result-icon worst">💎</div><div class="result-title">Pior Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">95.88% &plusmn; 0.07%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">92.63% &plusmn; 0.52%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.0782s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0138s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Polinomial_worst.png" alt="CM Worst"></div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div class="kernel-group">
+                    <div class="kernel-title">Kernel: Radial Basis Function</div>
+                    <div class="kernel-results">
+                        
+                        <div class="result-card best">
+                            <div class="result-header"><div class="result-icon best">👍</div><div class="result-title">Melhor Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">95.88% &plusmn; 0.07%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">94.17% &plusmn; 0.85%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.1234s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0353s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Radial_Basis_Function_best.png" alt="CM Best"></div>
+                        </div>
+                        
+
+                        
+                        <div class="result-card worst">
+                            <div class="result-header"><div class="result-icon worst">💎</div><div class="result-title">Pior Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">95.88% &plusmn; 0.07%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">93.96% &plusmn; 0.66%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.1238s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0634s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Radial_Basis_Function_worst.png" alt="CM Worst"></div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <div class="kernel-group">
+                    <div class="kernel-title">Kernel: Sigmoide</div>
+                    <div class="kernel-results">
+                        
+                        <div class="result-card best">
+                            <div class="result-header"><div class="result-icon best">👍</div><div class="result-title">Melhor Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">74.99% &plusmn; 2.36%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">74.15% &plusmn; 1.84%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.1100s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0204s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Sigmoide_best.png" alt="CM Best"></div>
+                        </div>
+                        
+
+                        
+                        <div class="result-card worst">
+                            <div class="result-header"><div class="result-icon worst">💎</div><div class="result-title">Pior Cenário</div></div>
+                            <ul class="metrics-list">
+                                <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=1</span></li>
+                                <li><span class="metric-name">Acc Treino:</span><span class="metric-val">65.25% &plusmn; 1.26%</span></li>
+                                <li><span class="metric-name">Acc Teste:</span><span class="metric-val">65.56% &plusmn; 2.66%</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">0.2892s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.0529s</span></li>
+                            </ul>
+                            <div class="cm-container"><img class="cm-image" src="svm_report_images/cm_Sigmoide_worst.png" alt="CM Worst"></div>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+            </div>
+            
+            
+            <div class="kernels-section" style="margin-top: 40px;">
+                <h2 class="section-title">🔍 Diagnósticos Automáticos</h2>
+                
+                <div class="diagnosis-card status-good" style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 20px; border-left: 5px solid #28a745;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="font-size: 2em; margin-right: 15px;">
+                            ✅
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.5em; color: #333;">Linear</h3>
+                            
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #555;">📝 Explicação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Performance Excelente (90.5%) com detecção balanceada.</p>
+                    </div>
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 3px solid #28a745;">
+                        <strong style="color: #555;">💡 Recomendação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Modelo adequado para produção.</p>
+                    </div>
+                </div>
+                
+                <div class="diagnosis-card status-good" style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 20px; border-left: 5px solid #28a745;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="font-size: 2em; margin-right: 15px;">
+                            ✅
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.5em; color: #333;">Polinomial</h3>
+                            
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #555;">📝 Explicação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Performance Excelente (92.7%) com detecção balanceada.</p>
+                    </div>
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 3px solid #28a745;">
+                        <strong style="color: #555;">💡 Recomendação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Modelo adequado para produção.</p>
+                    </div>
+                </div>
+                
+                <div class="diagnosis-card status-good" style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 20px; border-left: 5px solid #28a745;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="font-size: 2em; margin-right: 15px;">
+                            ✅
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.5em; color: #333;">Radial Basis Function</h3>
+                            
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #555;">📝 Explicação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Performance Excelente (94.2%) com detecção balanceada.</p>
+                    </div>
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px; border-left: 3px solid #28a745;">
+                        <strong style="color: #555;">💡 Recomendação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Modelo adequado para produção.</p>
+                    </div>
+                </div>
+                
+                <div class="diagnosis-card status-warning" style="background: rgba(255, 255, 255, 0.95); border-radius: 15px; padding: 25px; margin-bottom: 20px; border-left: 5px solid #ffc107;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="font-size: 2em; margin-right: 15px;">
+                            ⚠️
+                            
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.5em; color: #333;">Sigmoide</h3>
+                            <p style="margin: 5px 0 0 0; color: #666; font-weight: 500;">Alta Taxa de Falsos Alarmes</p>
+                        </div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <strong style="color: #555;">📝 Explicação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">FPR é 25.3%. Muitos arquivos seguros marcados como vírus.</p>
+                    </div>
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 3px solid #ffc107;">
+                        <strong style="color: #555;">💡 Recomendação:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6; color: #666;">Ajustar Gamma ou Pesos de Classe Negativa.</p>
+                    </div>
+                </div>
+                
+            </div>
+            
+
+            <div class="kernels-section" style="margin-top: 40px;">
+                <h2 class="section-title">📊 Guia: Entendendo o Desvio (±)</h2>
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-left: 10px solid #28a745;">
+                         <div class="card-header"><div class="card-icon" style="background: #28a745;">✓</div><div class="card-title">Desvio Baixo (< 2%)</div></div>
+                         <p style="font-size: 1em; color: #555; line-height: 1.5;">
+                            <b>Altamente Estável.</b> O modelo produz resultados consistentes independente de como os dados são divididos. Confiável para produção.
+                         </p>
+                    </div>
+                    <div class="stat-card" style="border-left: 10px solid #ffc107;">
+                         <div class="card-header"><div class="card-icon" style="background: #ffc107; color: #333;">!</div><div class="card-title">Moderado (2% - 10%)</div></div>
+                         <p style="font-size: 1em; color: #555; line-height: 1.5;">
+                            <b>Variância Aceitável.</b> Comum em datasets menores. Mostra leve sensibilidade a amostras específicas de dados.
+                         </p>
+                    </div>
+                    <div class="stat-card" style="border-left: 10px solid #dc3545;">
+                         <div class="card-header"><div class="card-icon" style="background: #dc3545;">✕</div><div class="card-title">Desvio Alto (> 10%)</div></div>
+                         <p style="font-size: 1em; color: #555; line-height: 1.5;">
+                            <b>Instável.</b> A performance do modelo flutua drasticamente. Pode estar sofrendo de Overfitting em partes específicas dos dados.
+                         </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kernels-section" style="margin-top: 40px; border-top: 5px solid #d63384;">
+                <h2 class="section-title" style="color: #d63384;">🛡️ Relatório de Vazamento de Dados</h2>
+                <p class="subtitle" style="margin-bottom: 20px;">Análise automática de features suspeitas (Correlação ~1.0).</p>
+                
+                <div class="stats-grid">
+                    <div class="stat-card" style="border-left: 10px solid #28a745;">
+                         <div class="card-header">
+                            <div class="card-icon" style="background: #28a745;">🛡️</div>
+                            <div class="card-title">0 Features Removidas</div>
+                         </div>
+                         <p style="font-size: 1em; color: #555; line-height: 1.5;">
+                            
+                            Nenhuma feature suspeita foi encontrada. O dataset parece livre de vazamento de dados óbvio.
+                            
+                         </p>
+                    </div>
+
+                    <div class="stat-card" style="border-left: 10px solid #6c757d;">
+                         <div class="card-header"><div class="card-icon" style="background: #6c757d;">ℹ️</div><div class="card-title">Por que isso importa?</div></div>
+                         <p style="font-size: 1em; color: #555; line-height: 1.5;">
+                            Se uma feature tem correlação 1.0, o modelo "trapaceia" usando apenas essa feature e ignorando o resto. 
+                            Ao removê-la ("Lista Suja"), forçamos o SVM a aprender padrões reais, fornecendo uma pontuação de acurácia realista ao invés de um falso 100%.
+                         </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </body>
+    </html>
+    
