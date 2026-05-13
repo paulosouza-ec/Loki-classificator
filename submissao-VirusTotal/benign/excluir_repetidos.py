@@ -1,0 +1,88 @@
+import sys
+import hashlib
+import json
+import requests
+import time
+import shutil
+import os
+import os.path
+
+###########################################
+def auxiliar(nome):
+	# BUF_SIZE is totally arbitrary, change for your app!
+	BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+
+	md5 = hashlib.md5()
+	sha1 = hashlib.sha1()
+
+	with open(nome, 'rb') as f:
+    		while True:
+        		data = f.read(BUF_SIZE)
+        		if not data:
+            			break
+        		md5.update(data)
+        		sha1.update(data)
+
+	return(format(sha1.hexdigest()))
+
+
+###########################################
+cam = os.getcwd() 		 	#Altere aqui, diretorio principal onde devem estar main.cpp e o main.py
+directory = 'benign'			#Altere aqui, subdiretorio dentro do diretorio principal onde devem estar os arquivos investigados
+virustotal = 'virustotal'		#Altere aqui, subdiretorio que armazenara os resultados do virustotal
+cam_repetidos = '_repetidos'		
+analise = 'cuckoobox'
+###########################################
+os.chdir(cam + "/" + directory)						
+os.system('ls > ' + cam + '/audit.txt')	
+os.chdir(cam)	
+###########################################
+lista = []
+repetidos = []
+arq = open(cam + "/audit.txt", "r")
+t = arq.readlines()
+for exe in t:
+	exe = exe.strip() #retira o \n
+	lista.append(exe)
+arq.close()
+###########################################
+for ii in range(0, len(lista)): 
+	for jj in range(ii+1, len(lista)):
+		shaa = auxiliar(cam + '/' + directory + '/' + lista[ii])
+		shab = auxiliar(cam + '/' + directory + '/' + lista[jj])
+		print('=========')
+		print(shaa)
+		print(shab)
+		if shaa == shab:
+			print('dfd')		
+			repetidos.append(lista[jj])	
+
+print(repetidos)
+
+
+for ii in range(0, len(repetidos)): 
+
+	src = cam + '/' + directory + '/' + str(repetidos[ii])
+	
+	if os.path.isfile(src):
+		dst = cam + '/' + directory  + cam_repetidos + '/' + str(repetidos[ii])
+		print(src)
+		print(dst)
+		shutil.move(src, dst)
+
+	src = cam + '/' + virustotal + '/' + str(repetidos[ii] + '.json')
+
+	if os.path.isfile(src):	
+		dst = cam + '/' + virustotal + cam_repetidos + '/' + str(repetidos[ii] + '.json')
+		print(src)
+		print(dst)
+		shutil.move(src, dst)
+
+	src = cam + '/' + analise + '/' + str(repetidos[ii] + '.json')
+
+	if os.path.isfile(src):	
+		dst = cam + '/' + analise + cam_repetidos + '/' + str(repetidos[ii] + '.json')
+		print(src)
+		print(dst)
+		shutil.move(src, dst)
+
