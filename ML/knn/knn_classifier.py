@@ -52,129 +52,162 @@ def gerar_relatorio_html(args, fold_metrics, best_fold, worst_fold, total_time, 
     f1_train_mean = np.mean([f['f1_train'] for f in fold_metrics])
     f1_train_std = np.std([f['f1_train'] for f in fold_metrics])
 
+    best_fm = next(f for f in fold_metrics if f['idx'] == best_fold['idx'])
+    worst_fm = next(f for f in fold_metrics if f['idx'] == worst_fold['idx'])
+
     img_best = plot_cm_to_base64(best_fold['cm'], f"Matriz - Melhor Fold ({best_fold['idx']}) - F1 Teste: {best_fold['score']:.4f}")
     img_worst = plot_cm_to_base64(worst_fold['cm'], f"Matriz - Pior Fold ({worst_fold['idx']}) - F1 Teste: {worst_fold['score']:.4f}")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     html_filename = f"KNN_TCC_Lokibot_Report_{timestamp}.html"
 
+    # Preparar variáveis para o HTML
+    threshold_val = f"{args.threshold}" if args.threshold is not None else "Padrão do Algoritmo"
+    is_tuned = "Sim (Grid Search)" if args.tune else "Não (Valores Manuais)"
+    norm_status = "Aplicada (MinMaxScaler)" if args.virusNorm else "Não Aplicada"
+
     linhas_folds = ""
     for f in fold_metrics:
-        linhas_folds += f"<tr><td>Fold {f['idx']}</td><td>{f['acc_train']:.4f}</td><td>{f['acc_test']:.4f}</td><td>{f['f1_test']:.4f}</td><td>{f['time']:.2f}s</td></tr>\n"
-
-    # Preparar a tag do Threshold para o HTML
-    if args.threshold is not None:
-        threshold_html = f'<span class="badge bg-warning">{args.threshold}</span>'
-    else:
-        threshold_html = '<span class="badge" style="background-color:#95a5a6;">Padrão do Algoritmo</span>'
+        linhas_folds += f"<tr style='border-bottom: 1px solid rgba(0,0,0,0.05);'><td style='padding:10px; font-weight:600;'>Fold {f['idx']}</td><td>{f['acc_train']*100:.2f}%</td><td>{f['acc_test']*100:.2f}%</td><td>{f['f1_test']:.4f}</td><td>{f['time']:.2f}s</td></tr>\n"
 
     html_content = f"""
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
         <meta charset="UTF-8">
-        <title>Relatório TCC - Detecção de Lokibot (KNN)</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard KNN - Relatório de Resultados</title>
         <style>
-            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; color: #333; margin: 30px; }}
-            .container {{ background-color: #fff; padding: 40px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); max-width: 1000px; margin: auto; }}
-            h1 {{ color: #2980b9; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
-            h2 {{ color: #3498db; margin-top: 35px; border-left: 4px solid #3498db; padding-left: 10px; font-size: 1.4em; }}
-            p.info-text {{ color: #555; font-size: 0.95em; line-height: 1.5; }}
-            table {{ width: 100%; border-collapse: collapse; margin-top: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
-            th, td {{ padding: 12px 15px; text-align: center; border-bottom: 1px solid #eee; }}
-            th {{ background-color: #f8f9fa; color: #2c3e50; font-weight: 600; text-transform: uppercase; font-size: 0.85em; }}
-            tr:hover {{ background-color: #f1f4f8; }}
-            .config-list li {{ margin-bottom: 8px; font-size: 1.05em; }}
-            .report-box {{ background: #272822; color: #f8f8f2; padding: 20px; border-radius: 8px; font-family: monospace; overflow-x: auto; white-space: pre; font-size: 14px; }}
-            .matrix-container {{ display: flex; justify-content: space-between; flex-wrap: wrap; margin-top: 20px; gap: 20px; }}
-            .matrix-box {{ flex: 1; min-width: 45%; text-align: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }}
-            .matrix-box img {{ max-width: 100%; height: auto; border-radius: 4px; }}
-            .footer {{ margin-top: 50px; font-size: 0.9em; color: #7f8c8d; text-align: center; border-top: 1px solid #eee; padding-top: 20px; }}
-            .badge {{ display: inline-block; padding: 5px 10px; border-radius: 15px; font-size: 0.85em; font-weight: bold; color: white; }}
-            .bg-benign {{ background-color: #27ae60; }}
-            .bg-lokibot {{ background-color: #e74c3c; }}
-            .bg-warning {{ background-color: #f39c12; }}
-            .std-dev {{ color: #7f8c8d; font-size: 0.9em; }}
-            .aviso {{ background-color: #e8f4f8; color: #0c5460; padding: 15px; border-left: 5px solid #17a2b8; margin-top: 20px; font-size: 0.9em; }}
-            .grid-badge {{ background-color: #f39c12; color: white; padding: 3px 8px; border-radius: 5px; font-size: 0.8em; margin-left: 10px; }}
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, Arial; background: linear-gradient(135deg, #8B1538 0%, #A91E4A 50%, #6B1429 100%); min-height: 100vh; color: #333; }}
+            .dashboard-container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+            .header {{ background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; margin-bottom: 30px; text-align: center; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }}
+            .header h1 {{ font-size: 2.5em; background: linear-gradient(45deg, #8B1538, #A91E4A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px; }}
+            .subtitle {{ font-size: 1.2em; color: #666; font-weight: 300; }}
+            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+            .stat-card {{ background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 15px; padding: 25px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); transition: transform 0.3s ease, box-shadow 0.3s ease; }}
+            .stat-card:hover {{ transform: translateY(-5px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15); }}
+            .stat-card.best {{ border-left: 10px solid #A5D7A7; }} .stat-card.worst {{ border-left: 10px solid #f9a19a; }}
+            .card-header {{ display: flex; align-items: center; margin-bottom: 20px; }}
+            .card-icon {{ width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 1.5em; font-weight: bold; color: white; }}
+            .card-icon.best {{ background: linear-gradient(45deg, #4CAF50, #66BB6A); }}
+            .card-icon.worst {{ background: linear-gradient(45deg, #f44336, #EF5350); }}
+            .card-icon.info {{ background: linear-gradient(45deg, #8B1538, #A91E4A); }}
+            .card-title {{ font-size: 1.3em; font-weight: 600; }}
+            .metric-row {{ display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.05); }}
+            .metric-row:last-child {{ border-bottom: none; }}
+            .metric-label {{ font-weight: 500; color: #555; }}
+            .metric-value {{ font-weight: 600; padding: 4px 12px; border-radius: 20px; text-align: right; }}
+            .metric-value.best {{ background: rgba(76, 175, 80, 0.1); }}
+            .metric-value.worst {{ background: rgba(244, 67, 54, 0.1); }}
+            .metric-value.neutral {{ background: rgba(0, 0, 0, 0.05); }}
+            .cm-container {{ text-align: center; margin-top: 20px; }}
+            .cm-image {{ max-width: 85%; height: auto; border-radius: 5px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); }}
+            .kernels-section {{ background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; padding: 30px; margin-bottom:30px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); }}
+            .section-title {{ font-size: 1.8em; margin-bottom: 20px; font-weight: 600; background: linear-gradient(45deg, #8B1538, #A91E4A); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }}
+            .logo-ufpe {{ height: 150px; width: auto; margin-bottom: 15px; }}
+            .custom-table {{ width: 100%; border-collapse: collapse; text-align: center; margin-top: 15px; }}
+            .custom-table th {{ background: rgba(0,0,0,0.05); padding: 12px; font-weight: 600; color: #333; border-radius: 5px; }}
+            .custom-table td {{ padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }}
+            .report-box {{ background: #f8f9fa; color: #333; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre; font-size: 14px; border: 1px solid rgba(0,0,0,0.1); overflow-x:auto; }}
+            @keyframes fadeInUp {{ from {{ opacity: 0; transform: translateY(30px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+            .stat-card, .kernels-section {{ animation: fadeInUp 0.6s ease forwards; }}
         </style>
     </head>
     <body>
-        <div class="container">
-            <h1>Relatório de Classificação: Lokibot vs Benigno (Modelo: KNN)</h1>
-            
-            <h2>1. Configurações do Experimento</h2>
-            <ul class="config-list">
-                <li><strong>Base de Dados:</strong> {args.AllData_File}</li>
-                <li><strong>Distribuição:</strong> <span class="badge bg-benign">Benignos: {qtd_benigno}</span> | <span class="badge bg-lokibot">Lokibot: {qtd_lokibot}</span></li>
-                <li><strong>K-Folds (Validação Cruzada):</strong> {args.kfold}</li>
-                <li><strong>Normalização:</strong> {'Sim (MinMaxScaler)' if args.virusNorm else 'Não'}</li>
-                <li><strong>Limiar de Decisão (Threshold):</strong> {threshold_html}</li>
-            </ul>
-
-            <div class="aviso">
-                <strong>Hiperparâmetros Utilizados no KNN:</strong><br>
-                {'<span class="grid-badge">Otimizados via Grid Search</span>' if args.tune else '<span class="grid-badge" style="background-color:#95a5a6;">Valores Manuais/Padrão</span>'}
-                <ul style="margin-top: 10px; margin-bottom: 0;">
-                    <li><strong>Vizinhos (K):</strong> {knn_params['n_neighbors']}</li>
-                    <li><strong>Pesos (Weights):</strong> {knn_params['weights']}</li>
-                    <li><strong>Métrica de Distância:</strong> {knn_params['metric']}</li>
-                </ul>
+        <div class="dashboard-container">
+            <div class="header">
+                <img src="../../src/ufpe_logo.png" alt="University Logo" class="logo-ufpe" onerror="this.style.display='none'">
+                <h1>KNN - Avaliação de Modelo</h1>
+                <p class="subtitle">Detecção de Lokibot vs Benigno - Validação Cruzada K-Fold</p>
             </div>
 
-            <h2>2. Análise de Generalização (Treino vs Teste)</h2>
-            <p class="info-text">Comparamos o desempenho nos dados já conhecidos (Treino) com dados inéditos (Teste) para avaliar a capacidade de generalização do modelo KNN.</p>
-            <table>
-                <thead>
-                    <tr><th>Métrica</th><th>Fase de Treinamento (Conhecido)</th><th>Fase de Teste (Inédito)</th></tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Acurácia Global</strong></td>
-                        <td>{acc_train_mean:.4f} <span class="std-dev">&plusmn; {acc_train_std:.4f}</span></td>
-                        <td><strong>{acc_test_mean:.4f} <span class="std-dev">&plusmn; {acc_test_std:.4f}</span></strong></td>
-                    </tr>
-                    <tr>
-                        <td><strong>F1-Score (Lokibot)</strong></td>
-                        <td>{f1_train_mean:.4f} <span class="std-dev">&plusmn; {f1_train_std:.4f}</span></td>
-                        <td><strong>{f1_test_mean:.4f} <span class="std-dev">&plusmn; {f1_test_std:.4f}</span></strong></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h2>3. Métricas Detalhadas de Teste (Média dos Folds)</h2>
-            <table>
-                <thead>
-                    <tr><th>Métrica</th><th>Resultado Médio no Teste</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td><strong>Precisão (Lokibot)</strong></td><td>{prec_mean:.4f}</td></tr>
-                    <tr><td><strong>Revocação / Taxa de Detecção (Lokibot)</strong></td><td>{rec_mean:.4f}</td></tr>
-                </tbody>
-            </table>
-
-            <h2>4. Relatório por Classe (Melhor Fold de Teste: {best_fold['idx']})</h2>
-            <div class="report-box">{best_fold['class_report']}</div>
-
-            <h2>5. Matrizes de Confusão (Fase de Teste)</h2>
-            <div class="matrix-container">
-                <div class="matrix-box">
-                    <h3>Melhor Fold ({best_fold['idx']})</h3>
-                    <img src="{img_best}" alt="Matriz de Confusão do Melhor Fold">
+            <div class="stats-grid">
+                <div class="stat-card best">
+                    <div class="card-header"><div class="card-icon best">🏆</div><div class="card-title">Melhor Fold (Fold {best_fold['idx']})</div></div>
+                    <div class="metric-row"><span class="metric-label">Acurácia Treino</span><span class="metric-value best">{best_fm['acc_train']*100:.2f}%</span></div>
+                    <div class="metric-row"><span class="metric-label">Acurácia Teste</span><span class="metric-value best">{best_fm['acc_test']*100:.2f}%</span></div>
+                    <div class="metric-row"><span class="metric-label">F1-Score (Lokibot)</span><span class="metric-value best">{best_fm['f1_test']:.4f}</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Execução</span><span class="metric-value best">{best_fm['time']:.4f}s</span></div>
+                    <div class="cm-container"><img class="cm-image" src="{img_best}" alt="Matriz Melhor Fold"></div>
                 </div>
-                <div class="matrix-box">
-                    <h3>Pior Fold ({worst_fold['idx']})</h3>
-                    <img src="{img_worst}" alt="Matriz de Confusão do Pior Fold">
+
+                <div class="stat-card worst">
+                    <div class="card-header"><div class="card-icon worst">💎</div><div class="card-title">Pior Fold (Fold {worst_fold['idx']})</div></div>
+                    <div class="metric-row"><span class="metric-label">Acurácia Treino</span><span class="metric-value worst">{worst_fm['acc_train']*100:.2f}%</span></div>
+                    <div class="metric-row"><span class="metric-label">Acurácia Teste</span><span class="metric-value worst">{worst_fm['acc_test']*100:.2f}%</span></div>
+                    <div class="metric-row"><span class="metric-label">F1-Score (Lokibot)</span><span class="metric-value worst">{worst_fm['f1_test']:.4f}</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Execução</span><span class="metric-value worst">{worst_fm['time']:.4f}s</span></div>
+                    <div class="cm-container"><img class="cm-image" src="{img_worst}" alt="Matriz Pior Fold"></div>
                 </div>
             </div>
 
-            <h2>6. Resumo por Fold (Treino vs Teste)</h2>
-            <table>
-                <thead><tr><th>Fold</th><th>Acc Treino</th><th>Acc Teste</th><th>F1-Score Teste</th><th>Tempo Execução</th></tr></thead>
-                <tbody>{linhas_folds}</tbody>
-            </table>
-            
-            <div class="footer">Relatório KNN gerado para análise acadêmica e de TCC.</div>
+            <div class="kernels-section">
+                <h2 class="section-title">⚙️ Configurações do Experimento</h2>
+                <div class="stats-grid" style="margin-bottom: 0;">
+                    <div class="stat-card" style="border-left: 5px solid #8B1538; padding: 20px;">
+                        <div class="card-header" style="margin-bottom: 10px;"><div class="card-icon info" style="width: 40px; height: 40px; font-size:1.1em;">📊</div><div class="card-title" style="font-size:1.1em;">Dados da Base</div></div>
+                        <div class="metric-row"><span class="metric-label">Base Utilizada</span><span class="metric-value neutral">{os.path.basename(args.AllData_File)}</span></div>
+                        <div class="metric-row"><span class="metric-label">Benignos / Lokibot</span><span class="metric-value neutral">{qtd_benigno} / {qtd_lokibot}</span></div>
+                        <div class="metric-row"><span class="metric-label">Normalização</span><span class="metric-value neutral">{norm_status}</span></div>
+                        <div class="metric-row"><span class="metric-label">Validação (K-Folds)</span><span class="metric-value neutral">{args.kfold}</span></div>
+                        <div class="metric-row"><span class="metric-label">Threshold</span><span class="metric-value neutral">{threshold_val}</span></div>
+                    </div>
+                    <div class="stat-card" style="border-left: 5px solid #A91E4A; padding: 20px;">
+                        <div class="card-header" style="margin-bottom: 10px;"><div class="card-icon info" style="width: 40px; height: 40px; font-size:1.1em;">🧠</div><div class="card-title" style="font-size:1.1em;">Hiperparâmetros</div></div>
+                        <div class="metric-row"><span class="metric-label">Método</span><span class="metric-value neutral">{is_tuned}</span></div>
+                        <div class="metric-row"><span class="metric-label">Vizinhos (K)</span><span class="metric-value neutral">{knn_params['n_neighbors']}</span></div>
+                        <div class="metric-row"><span class="metric-label">Pesos (Weights)</span><span class="metric-value neutral">{knn_params['weights']}</span></div>
+                        <div class="metric-row"><span class="metric-label">Distância</span><span class="metric-value neutral">{knn_params['metric']}</span></div>
+                        <div class="metric-row"><span class="metric-label">Tempo Total Execução</span><span class="metric-value neutral">{total_time:.2f}s</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📈 Análise de Generalização (Média ± Desvio Padrão)</h2>
+                <table class="custom-table">
+                    <thead>
+                        <tr><th>Métrica</th><th>Fase de Treinamento (Conhecido)</th><th>Fase de Teste (Inédito)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Acurácia Global</strong></td>
+                            <td>{acc_train_mean*100:.2f}% &plusmn; {acc_train_std*100:.2f}%</td>
+                            <td><strong style="color: #28a745;">{acc_test_mean*100:.2f}% &plusmn; {acc_test_std*100:.2f}%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>F1-Score (Lokibot)</strong></td>
+                            <td>{f1_train_mean:.4f} &plusmn; {f1_train_std:.4f}</td>
+                            <td><strong style="color: #28a745;">{f1_test_mean:.4f} &plusmn; {f1_test_std:.4f}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Precisão Média (Teste)</strong></td>
+                            <td colspan="2">{prec_mean:.4f}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Taxa de Detecção / Revocação Média (Teste)</strong></td>
+                            <td colspan="2">{rec_mean:.4f}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📝 Relatório de Classificação (Referente ao Melhor Fold)</h2>
+                <div class="report-box">{best_fold['class_report']}</div>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📋 Resumo Detalhado por Fold</h2>
+                <table class="custom-table">
+                    <thead>
+                        <tr><th>Fold</th><th>Acurácia Treino</th><th>Acurácia Teste</th><th>F1-Score Teste</th><th>Tempo Execução</th></tr>
+                    </thead>
+                    <tbody>{linhas_folds}</tbody>
+                </table>
+            </div>
+
         </div>
     </body>
     </html>
