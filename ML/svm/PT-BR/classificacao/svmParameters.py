@@ -107,10 +107,10 @@ def estimate_and_filter_kernels(y, x, kernels_to_test, cost_vector, gamma_vector
         comp_mult = 5.0 if t == 1 else 1.2 if t == 2 else 1.0
         est_time = base_factor * (n_samples ** 2) * n_features * density * comp_mult * iters_kernel
         
-       """if est_time > MAX_TIME:
+        if est_time > MAX_TIME:
              skipped_info[t] = {'reason': 'Descartado (Muito Lento)', 'detail': f'Est: {format_time(est_time)}'}
              print(f"  ⚠️  Pulando {k_name}: Est. {format_time(est_time)} > Limite")
-             continue """
+             continue
              
         total_est += est_time
         total_iters += iters_kernel
@@ -718,4 +718,4 @@ if __name__ == "__main__":
     dataset, threshold = setOpts(sys.argv[1:])
     experiment = svmParameters()
     glob, res, skip, dirty_cnt = experiment.main(dataset, threshold)
-    generate_html_report(glob, res, skip, dirty_cnt)
+    generate_html_report(glob, res, skip, dirty_cnt)
