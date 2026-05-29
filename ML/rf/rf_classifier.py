@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import argparse
+import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import KFold, GridSearchCV
 from sklearn.preprocessing import MinMaxScaler
@@ -21,16 +22,33 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 def plot_cm_to_base64(cm, title):
-    fig, ax = plt.subplots(figsize=(8, 6))
-    display_labels = ['Benigno (0)', 'Lokibot (1)']
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=display_labels)
-    disp.plot(cmap='Blues', ax=ax, values_format='g', colorbar=True)
-    plt.title(title, fontsize=14, pad=15)
-    plt.ylabel('Classe Verdadeira (Real)', fontsize=12)
-    plt.xlabel('Classe Predita', fontsize=12)
+    # Normalizando a matriz por linha para calcular a porcentagem
+    cm_sum = cm.sum(axis=1)[:, np.newaxis]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        cm_pct = cm.astype('float') / cm_sum * 100
+    cm_pct = np.nan_to_num(cm_pct)
+
+    # Preparando os rótulos de porcentagem
+    annot = np.array([[f'{v:.1f}%' for v in r] for r in cm_pct])
+
+    # Construindo o gráfico com Seaborn (Idêntico ao svmParameters.py)
+    fig = plt.figure(figsize=(6, 5))
+    sns.heatmap(cm_pct, annot=annot, fmt='', cmap=plt.cm.Blues, 
+                cbar_kws={'label': 'Porcentagem (%)'},
+                annot_kws={"size": 12, "weight": "bold"})
+    
+    # Rótulos Personalizados idênticos ao SVM
+    plt.yticks([0.5, 1.5], ['Benigno', 'Maligno'], va='center', fontsize=10)
+    plt.xticks([0.5, 1.5], ['Prev Benigno', 'Prev Maligno'], fontsize=10)
+
+    plt.title(title, fontsize=11, pad=15, fontweight='bold')
+    plt.ylabel('Rótulo Real', fontsize=10, fontweight='bold')
+    plt.xlabel('Rótulo Previsto', fontsize=10, fontweight='bold')
+    plt.tight_layout()
         
+    # Convertendo para Base64
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
     plt.close(fig)
     buf.seek(0)
     
