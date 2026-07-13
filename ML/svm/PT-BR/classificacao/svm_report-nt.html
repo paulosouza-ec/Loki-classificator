@@ -47,6 +47,10 @@
             .metrics-list li:last-child { border-bottom: none; }
             .metric-name { font-weight: 500; color: #555; }
             .metric-val { font-weight: 600; }
+            .custom-table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 15px; }
+            .custom-table th { background: rgba(0,0,0,0.05); padding: 12px; font-weight: 600; color: #333; border-radius: 5px; }
+            .custom-table td { padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+            .report-box { background: #f8f9fa; color: #333; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre; font-size: 14px; border: 1px solid rgba(0,0,0,0.1); overflow-x:auto; }
             @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
             .stat-card, .kernels-section { animation: fadeInUp 0.6s ease forwards; }
         </style>
@@ -66,8 +70,8 @@
                     <div class="metric-row"><span class="metric-label">Melhor Kernel</span><span class="metric-value best">Radial Basis Function</span></div>
                     <div class="metric-row"><span class="metric-label">Acc Treino</span><span class="metric-value best">92.24%</span></div>
                     <div class="metric-row"><span class="metric-label">Acc Teste</span><span class="metric-value best">90.40%</span></div>
-                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value best">2.4906s</span></div>
-                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value best">0.6750s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value best">4.2406s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value best">1.1344s</span></div>
                     <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_global_best.png" alt="CM Best Global"></div>
                 </div>
 
@@ -77,10 +81,52 @@
                     <div class="metric-row"><span class="metric-label">Pior Kernel</span><span class="metric-value worst">Sigmoide</span></div>
                     <div class="metric-row"><span class="metric-label">Acc Treino</span><span class="metric-value worst">24.66%</span></div>
                     <div class="metric-row"><span class="metric-label">Acc Teste</span><span class="metric-value worst">24.68%</span></div>
-                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value worst">5.7906s</span></div>
-                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value worst">0.8344s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Treino</span><span class="metric-value worst">9.7406s</span></div>
+                    <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value worst">1.3438s</span></div>
                     <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_global_worst.png" alt="CM Worst Global"></div>
                 </div>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📈 Análise de Generalização (Média ± Desvio Padrão) - Referente ao Melhor Global</h2>
+                <table class="custom-table">
+                    <thead>
+                        <tr><th>Métrica</th><th>Fase de Treinamento (Conhecido)</th><th>Fase de Teste (Inédito)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Acurácia Global</strong></td>
+                            <td>92.24% &plusmn; 0.23%</td>
+                            <td><strong style="color: #28a745;">90.40% &plusmn; 1.21%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>F1-Score (Lokibot)</strong></td>
+                            <td>0.9217 &plusmn; 0.0030</td>
+                            <td><strong style="color: #28a745;">0.9026 &plusmn; 0.0097</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Precisão Média (Teste)</strong></td>
+                            <td colspan="2">0.9197</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Taxa de Detecção / Revocação Média (Teste)</strong></td>
+                            <td colspan="2">0.8886</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📝 Relatório de Classificação (Referente ao Melhor Global)</h2>
+                <div class="report-box">              precision    recall  f1-score   support
+
+     Benigno       0.90      0.95      0.92       637
+     Lokibot       0.94      0.89      0.92       616
+
+    accuracy                           0.92      1253
+   macro avg       0.92      0.92      0.92      1253
+weighted avg       0.92      0.92      0.92      1253
+</div>
             </div>
 
             <div class="kernels-section">
@@ -96,8 +142,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=0</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">88.22% &plusmn; 0.56%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">86.66% &plusmn; 1.22%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">169.7656s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.5000s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">351.4062s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.6719s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Linear_best.png" alt="CM Best"></div>
                         </div>
@@ -110,8 +156,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=0</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">87.64% &plusmn; 0.72%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">86.55% &plusmn; 0.65%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">2.3969s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.4625s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">4.1406s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.7219s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Linear_worst.png" alt="CM Worst"></div>
                         </div>
@@ -129,8 +175,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=1</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">92.24% &plusmn; 0.23%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">90.40% &plusmn; 1.21%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">2.4906s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.6750s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">4.2406s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">1.1344s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Radial_Basis_Function_best.png" alt="CM Best"></div>
                         </div>
@@ -143,8 +189,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=1</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">92.14% &plusmn; 0.22%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">90.35% &plusmn; 1.16%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">2.3406s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.6094s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">4.0781s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">1.0406s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Radial_Basis_Function_worst.png" alt="CM Worst"></div>
                         </div>
@@ -162,8 +208,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1000, γ=1</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">77.92% &plusmn; 0.23%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">77.95% &plusmn; 0.89%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">1.6375s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.5437s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">2.6250s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.7469s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Sigmoide_best.png" alt="CM Best"></div>
                         </div>
@@ -176,8 +222,8 @@
                                 <li><span class="metric-name">Config (C, γ):</span><span class="metric-val">C=1, γ=1</span></li>
                                 <li><span class="metric-name">Acc Treino:</span><span class="metric-val">24.66% &plusmn; 0.21%</span></li>
                                 <li><span class="metric-name">Acc Teste:</span><span class="metric-val">24.68% &plusmn; 0.95%</span></li>
-                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">5.7906s</span></li>
-                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">0.8344s</span></li>
+                                <li><span class="metric-name">Tempo Treino:</span><span class="metric-val">9.7406s</span></li>
+                                <li><span class="metric-name">Tempo Teste:</span><span class="metric-val">1.3438s</span></li>
                             </ul>
                             <div class="cm-container"><img class="cm-image" src="svm_report_images-nt/cm_Sigmoide_worst.png" alt="CM Worst"></div>
                         </div>

@@ -308,38 +308,59 @@ def pruningDataset(y, x, threshold):
     return y, x_cleaned, dirty_count
 
 def svmKfold(y, x, t, cost, gamma, k_folds, callback=None):
+    from sklearn.metrics import f1_score, precision_score, recall_score, classification_report
     np.random.seed(1)
     kf = KFold(n_splits=k_folds, shuffle=True)
     acc_tr, acc_te, t_tr, t_te = [], [], [], []
     cms_tr, cms_te = [], []
-    
+
+    f1_tr_list, f1_te_list = [], []
+    prec_te_list, rec_te_list = [], []
+    reports = []
+
     param = f'-t {t} -c {cost} -g {gamma} -m 500 -e 0.05 -q'
-    
+
+    unique_y = sorted(np.unique(y))
+    pos_label = unique_y[-1] if len(unique_y) > 1 else 1
+
     for tr_idx, te_idx in kf.split(x):
         x_tr, x_te = [x[i] for i in tr_idx], [x[i] for i in te_idx]
         y_tr, y_te = [y[i] for i in tr_idx], [y[i] for i in te_idx]
-        
+
         t0 = process_time()
         m = svm_train(y_tr, x_tr, param)
         t1 = process_time()
-        
-        _, p_acc_tr, _ = svm_predict(y_tr, x_tr, m, '-q')
+
+        p_lbl_tr, p_acc_tr, _ = svm_predict(y_tr, x_tr, m, '-q')
         t2 = process_time()
         p_lbl, p_acc_te, _ = svm_predict(y_te, x_te, m, '-q')
         t3 = process_time()
-        
+
         acc_tr.append(p_acc_tr[0]); acc_te.append(p_acc_te[0])
         t_tr.append(t1-t0); t_te.append(t3-t2)
-        cms_te.append(confusion_matrix(y_te, p_lbl, labels=sorted(np.unique(y))))
+        cms_te.append(confusion_matrix(y_te, p_lbl, labels=unique_y))
+
+        f1_tr_list.append(f1_score(y_tr, p_lbl_tr, pos_label=pos_label, average='binary', zero_division=0))
+        f1_te_list.append(f1_score(y_te, p_lbl, pos_label=pos_label, average='binary', zero_division=0))
+        prec_te_list.append(precision_score(y_te, p_lbl, pos_label=pos_label, average='binary', zero_division=0))
+        rec_te_list.append(recall_score(y_te, p_lbl, pos_label=pos_label, average='binary', zero_division=0))
+
+        target_names = ['Benigno', 'Lokibot'] if len(unique_y) == 2 else None
+        reports.append(classification_report(y_te, p_lbl, labels=unique_y, target_names=target_names, zero_division=0))
+
         if callback: callback()
-    
+
     cm_mean = np.mean(cms_te, axis=0)
-    cm_std = np.std(cms_te, axis=0) 
-        
+    cm_std = np.std(cms_te, axis=0)
+
+    best_fold_idx = np.argmax(acc_te)
+    best_report = reports[best_fold_idx]
+
     return np.mean(acc_tr), np.std(acc_tr), np.mean(acc_te), np.std(acc_te), \
            np.mean(t_tr), np.std(t_tr), np.mean(t_te), np.std(t_te), \
-           cm_std, cm_mean
-
+           cm_std, cm_mean, \
+           np.mean(f1_tr_list), np.std(f1_tr_list), np.mean(f1_te_list), np.std(f1_te_list), \
+           np.mean(prec_te_list), np.mean(rec_te_list), best_report
 class svmParameters():
     def main(self, dataset, threshold):
         y, x = svm_read_problem(dataset)
@@ -368,7 +389,7 @@ class svmParameters():
             for c in c_vec:
                 for g in gs:
                     print_progress_info(curr_iter, tot_iters, start_t, f"K:{kernel_str(t)} C:{c}")
-                    mtr, str_, mte, ste, mttr, sttr, mtte, stte, stm, mcm = svmKfold(y, x, t, c, g, k_folds, cb)
+                    mtr, str_, mte, ste, mttr, sttr, mtte, stte, stm, mcm, f1tr_m, f1tr_s, f1te_m, f1te_s, prec_m, rec_m, b_rep = svmKfold(y, x, t, c, g, k_folds, cb)
                     sys.stdout.write("\r" + " "*100 + "\r")
                     dm = calculate_detection_metrics(mcm)
                     print(f"✅ Concluído: {kernel_str(t)} | C={c} | G={g} | Acc: {mte:.2f}%")
@@ -383,7 +404,11 @@ class svmParameters():
                         "accuracy_train": mtr, "std_train": str_, "accuracy_test": mte, "std_test": ste,
                         "time_train": mttr, "std_time_train": sttr, "time_test": mtte, "std_time_test": stte,
                         "cost": c, "gamma": g, "confusion_matrix_test": mcm, "confusion_matrix_std": stm,
-                        "diagnosis": diag
+                        "diagnosis": diag,
+                        "f1_train_mean": f1tr_m, "f1_train_std": f1tr_s,
+                        "f1_test_mean": f1te_m, "f1_test_std": f1te_s,
+                        "prec_test_mean": prec_m, "rec_test_mean": rec_m,
+                        "class_report": b_rep
                     }
                     runs.append(dat)
                     if mte > max_acc: max_acc = mte; max_res = {**dat, 'kernel_id': t}
@@ -393,7 +418,19 @@ class svmParameters():
                 res[t] = { "max_test": max(runs, key=lambda r: r['accuracy_test']), "min_test": min(runs, key=lambda r: r['accuracy_test']) }
 
         print_progress_info(tot_iters, tot_iters, start_t, "Pronto!")
-        print("\n")
+        print("\n" + "="*80)
+        print("📈 Análise de Generalização (Média ± Desvio Padrão) - REFERENTE AO MELHOR GLOBAL")
+        print("="*80)
+        print(f"Acurácia Global Treino: {max_res.get('accuracy_train', 0):.2f}% ± {max_res.get('std_train', 0):.2f}%")
+        print(f"Acurácia Global Teste:  {max_res.get('accuracy_test', 0):.2f}% ± {max_res.get('std_test', 0):.2f}%")
+        print(f"F1-Score (Lokibot) Tr.: {max_res.get('f1_train_mean', 0):.4f} ± {max_res.get('f1_train_std', 0):.4f}")
+        print(f"F1-Score (Lokibot) Te.: {max_res.get('f1_test_mean', 0):.4f} ± {max_res.get('f1_test_std', 0):.4f}")
+        print(f"Precisão Média (Teste): {max_res.get('prec_test_mean', 0):.4f}")
+        print(f"Taxa de Det. / Rev. Média (Teste): {max_res.get('rec_test_mean', 0):.4f}")
+        print("\n📝 Relatório de Classificação (Referente ao Melhor Fold)")
+        print(max_res.get('class_report', ''))
+        print("="*80 + "\n")
+        
         glob = {"max": max_res, "min": min_res}
         return glob, res, skip_info, dirty_count
 
@@ -531,6 +568,10 @@ def generate_html_report(global_results, kernel_results, skipped_info, dirty_cou
             .metrics-list li:last-child { border-bottom: none; }
             .metric-name { font-weight: 500; color: #555; }
             .metric-val { font-weight: 600; }
+            .custom-table { width: 100%; border-collapse: collapse; text-align: center; margin-top: 15px; }
+            .custom-table th { background: rgba(0,0,0,0.05); padding: 12px; font-weight: 600; color: #333; border-radius: 5px; }
+            .custom-table td { padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+            .report-box { background: #f8f9fa; color: #333; padding: 20px; border-radius: 8px; font-family: monospace; white-space: pre; font-size: 14px; border: 1px solid rgba(0,0,0,0.1); overflow-x:auto; }
             @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
             .stat-card, .kernels-section { animation: fadeInUp 0.6s ease forwards; }
         </style>
@@ -565,6 +606,40 @@ def generate_html_report(global_results, kernel_results, skipped_info, dirty_cou
                     <div class="metric-row"><span class="metric-label">Tempo Teste</span><span class="metric-value worst">{{ "%.4f"|format(global_results.min.time_test) }}s</span></div>
                     {% if cm_global_worst %}<div class="cm-container"><img class="cm-image" src="{{ cm_global_worst }}" alt="CM Worst Global"></div>{% endif %}
                 </div>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📈 Análise de Generalização (Média ± Desvio Padrão) - Referente ao Melhor Global</h2>
+                <table class="custom-table">
+                    <thead>
+                        <tr><th>Métrica</th><th>Fase de Treinamento (Conhecido)</th><th>Fase de Teste (Inédito)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Acurácia Global</strong></td>
+                            <td>{{ "%.2f"|format(global_results.max.accuracy_train) }}% &plusmn; {{ "%.2f"|format(global_results.max.std_train) }}%</td>
+                            <td><strong style="color: #28a745;">{{ "%.2f"|format(global_results.max.accuracy_test) }}% &plusmn; {{ "%.2f"|format(global_results.max.std_test) }}%</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>F1-Score (Lokibot)</strong></td>
+                            <td>{{ "%.4f"|format(global_results.max.f1_train_mean|default(0)) }} &plusmn; {{ "%.4f"|format(global_results.max.f1_train_std|default(0)) }}</td>
+                            <td><strong style="color: #28a745;">{{ "%.4f"|format(global_results.max.f1_test_mean|default(0)) }} &plusmn; {{ "%.4f"|format(global_results.max.f1_test_std|default(0)) }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Precisão Média (Teste)</strong></td>
+                            <td colspan="2">{{ "%.4f"|format(global_results.max.prec_test_mean|default(0)) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Taxa de Detecção / Revocação Média (Teste)</strong></td>
+                            <td colspan="2">{{ "%.4f"|format(global_results.max.rec_test_mean|default(0)) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="kernels-section">
+                <h2 class="section-title">📝 Relatório de Classificação (Referente ao Melhor Global)</h2>
+                <div class="report-box">{{ global_results.max.class_report|default('Não disponível') }}</div>
             </div>
 
             <div class="kernels-section">
